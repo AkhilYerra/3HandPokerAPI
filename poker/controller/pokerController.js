@@ -14,15 +14,74 @@ exports.addPlayer = async (req, res, next) =>{
     let username = {userName: playerToBeAdded};
     try{
         const result = await pokerService.addPlayerToMongo([playerToBeAdded,pusher]);
-        console.log(result)
         res.send(result.users);
     }catch(err){
         next(err);
     }
 }
 
-exports.testsample = (req, res, next) =>{
-    console.log("HOLD UP WAIT");
-    res.status(200).end('pop')
-    next('We Gucci');
+exports.getPlayers = async (req, res, next) =>{
+    try{
+        const result = await pokerService.retrieveUserList([pusher]);
+        res.send(result.users);
+    }catch(err){
+        next(err);
+    }
+}
+
+exports.startGame = async(req, res, next) =>{
+    try{
+        const result = await pokerService.startGame([pusher]);
+        res.send(result);
+    }catch(err){
+        next(err)
+    }
+}
+
+
+exports.populatePlayers = async(req, res, next)=>{
+    playerToBeAdded = req.body.playerName;
+    betAmount = req.body.amount;
+    let samplePlayer = {
+        name : playerToBeAdded,
+        amount:betAmount,
+        hasSeen: false,
+        hasFolded:false,
+        cards:[],
+    }
+    try{
+        const result = await pokerService.populatePlayersForGame([samplePlayer]);
+        res.send(result);
+    }catch(err){
+        next(err)
+    }
+}
+
+exports.getAllPlayers = async(req, res, next) =>{
+    try{
+        const result = await pokerService.getAllPlayers([pusher]);
+        console.log(result);
+        res.send(result);
+    }catch(err){
+        next(err)
+    }
+}
+
+exports.shuffle = async(req, res, next) =>{
+    listOfUsers = req.body;
+    console.log(listOfUsers)
+    try{
+        await pokerService.shuffleCards([listOfUsers]);
+        try{
+            const allPlayers = await pokerService.getAllPlayers([pusher]);
+            console.log(allPlayers)
+            res.send(allPlayers);
+        }catch(error){
+            next(error)
+        }
+        console.log(allPlayers);
+        res.send(allPlayers);
+    }catch(err){
+        next(err)
+    }
 }
