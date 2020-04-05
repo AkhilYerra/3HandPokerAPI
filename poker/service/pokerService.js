@@ -169,12 +169,26 @@ exports.changeTurn = async([moveDetails]) =>{
      }
      if(hasFolded === true){
         results[0].list.splice(index, 1);
-        playerListSchema.findOneAndUpdate({'name':'PlayerList'}, {'$set': {'list' : results.list}},{upsert: true},
+        console.log(results[0].list);
+        console.log(index);
+        await playerListSchema.findOneAndUpdate({'name':'PlayerList'}, {'$set': {'list' : results[0].list}},{upsert: true},
         function(error, properties){
             if(error){
                 return error;
             }
-        });    
+        }); 
+        if(index >= results[0].list.length){
+            index = 0;
+        }
+        let username = results[0].list[index];
+        console.log(username)
+        await playerSchema.findOneAndUpdate({'name':username}, {'$set': {'isYourTurn': true}},
+        function(error, properties){
+            if(error){
+                return error;
+            }
+            console.log("FINSIHED");
+        });   
      }else{
         index = index + 1;
         if(index >= results[0].list.length){
