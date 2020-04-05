@@ -3,9 +3,10 @@ var mongoose = require('mongoose');
 
   var player = new mongoose.Schema({
     name:String,
-    amount:Number, 
+    amount: mongoose.Types.Decimal128, 
     hasSeen: Boolean,
-    hasFolded: Boolean, 
+    hasFolded: Boolean,
+    isYourTurn: Boolean, 
     cards: [Object]
   });
 

@@ -25,4 +25,8 @@ pokerRouter.post('/shuffle',
 pokerController.shuffle
 )
 
+pokerRouter.post('/makeMove', 
+pokerController.makeMove
+)
+
 module.exports = pokerRouter;

@@ -47,6 +47,7 @@ exports.populatePlayers = async(req, res, next)=>{
         amount:betAmount,
         hasSeen: false,
         hasFolded:false,
+        isYourTurn: (playerToBeAdded==='Admin' ? true : false),
         cards:[],
     }
     try{
@@ -73,11 +74,39 @@ exports.shuffle = async(req, res, next) =>{
     try{
         await pokerService.shuffleCards([listOfUsers]);
         try{
-            const allPlayers = await pokerService.getAllPlayers([pusher]);
-            console.log(allPlayers)
-            res.send(allPlayers);
-        }catch(error){
-            next(error)
+            await pokerService.updatePlayersPlaying([listOfUsers]);
+            try{
+                const allPlayers = await pokerService.getAllPlayers([pusher]);
+                console.log(allPlayers)
+                res.send(allPlayers);
+            }catch(error){
+                next(error)
+            }    
+        }catch(e){
+            next(e);
+        }
+        console.log(allPlayers);
+        res.send(allPlayers);
+    }catch(err){
+        next(err)
+    }
+}
+
+exports.makeMove = async(req, res, next) =>{
+    let moveDetails = req.body;
+    try{
+        await pokerService.makeMove([moveDetails]);
+        try{
+            const list = await pokerService.changeTurn([moveDetails]);
+            try{
+                const allPlayers = await pokerService.getAllPlayers([pusher]);
+                console.log(allPlayers)
+                res.send(allPlayers);
+            }catch(error){
+                next(error)
+            }    
+        }catch(e){
+
         }
         console.log(allPlayers);
         res.send(allPlayers);

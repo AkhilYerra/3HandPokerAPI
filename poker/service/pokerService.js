@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 const listOfUsersSchema = require('../schema/ListOfUsersSchema')
 const playerSchema = require('../schema/playerSchema')
+const playerListSchema = require('../schema/playerListSchema')
 const Card = require('../model/card')
 
 
@@ -80,6 +81,15 @@ exports.getAllPlayers = async([pusher]) =>{
      return(null, AllPlayers);  
 }
 
+exports.updatePlayersPlaying = async([listOfUsers]) =>{
+    playerListSchema.findOneAndUpdate({'name':'PlayerList'}, {'$set': {'list' : listOfUsers}},{upsert: true},
+        function(error, properties){
+            if(error){
+                return error;
+            }
+        });     
+}
+
 exports.shuffleCards = async([listOfUsers]) =>{
     console.log("SHUFFLING")
     console.log(listOfUsers)
@@ -108,17 +118,78 @@ function createDeckOfCards(){
     const clover = 'Clover'
     const heart = 'Heart'
     let deckOfCards = [];
-    for(let i =1; i < 14; i++){
+    for(let i =7; i < 15; i++){
         deckOfCards.push({suite:diamond, value:i})
     }
-    for(let i =1; i < 14; i++){
+    for(let i =7; i < 15; i++){
         deckOfCards.push({suite:spade, value:i})
     }
-    for(let i =1; i < 14; i++){
+    for(let i =7; i < 15; i++){
         deckOfCards.push({suite:clover, value:i})
     }
-    for(let i =1; i < 14; i++){
+    for(let i =7; i < 15; i++){
         deckOfCards.push({suite:heart, value:i})
     }
     return deckOfCards;
 }
+
+exports.makeMove = async([moveDetails]) =>{
+    let username = moveDetails.username;
+    let hasSeen = moveDetails.hasSeen;
+    let hasFolded = moveDetails.hasFolded;
+    let amount = moveDetails.amount;
+    let userAmount = moveDetails.userAmount;
+    let updatedAmount = userAmount - amount;
+    await playerSchema.findOneAndUpdate({'name':username}, {'$set': {'hasSeen': hasSeen, 'hasFolded':hasFolded, 'amount' : updatedAmount, 'isYourTurn': false}},
+    function(error, properties){
+        if(error){
+            return error;
+        }
+        console.log("FINSIHED");
+    }); 
+    return null;
+}
+
+exports.changeTurn = async([moveDetails]) =>{
+    let username = moveDetails.username;
+    let hasFolded = moveDetails.hasFolded;
+    let results = await playerListSchema.find(
+        {},
+        function (err, raw) {
+            if (err){
+                return err;
+            }
+        }
+     );
+     let index = 0;
+     for(let i =0; i < results[0].list.length; i++){
+        if(results[0].list[i] === username){
+            index = i;
+        }
+     }
+     if(hasFolded === true){
+        results[0].list.splice(index, 1);
+        playerListSchema.findOneAndUpdate({'name':'PlayerList'}, {'$set': {'list' : results.list}},{upsert: true},
+        function(error, properties){
+            if(error){
+                return error;
+            }
+        });    
+     }else{
+        index = index + 1;
+        if(index >= results[0].list.length){
+            index = 0;
+        }
+        let username = results[0].list[index];
+        console.log(username)
+        await playerSchema.findOneAndUpdate({'name':username}, {'$set': {'isYourTurn': true}},
+        function(error, properties){
+            if(error){
+                return error;
+            }
+            console.log("FINSIHED");
+        });     
+     }
+     return null;
+}
+
