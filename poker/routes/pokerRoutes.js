@@ -29,4 +29,7 @@ pokerRouter.post('/makeMove',
 pokerController.makeMove
 )
 
+pokerRouter.post('/payWinner', 
+pokerController.payWinner)
+
 module.exports = pokerRouter;

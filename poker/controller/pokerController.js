@@ -61,7 +61,6 @@ exports.populatePlayers = async(req, res, next)=>{
 exports.getAllPlayers = async(req, res, next) =>{
     try{
         const result = await pokerService.getAllPlayers([pusher]);
-        console.log(result);
         res.send(result);
     }catch(err){
         next(err)
@@ -70,14 +69,12 @@ exports.getAllPlayers = async(req, res, next) =>{
 
 exports.shuffle = async(req, res, next) =>{
     listOfUsers = req.body;
-    console.log(listOfUsers)
     try{
-        await pokerService.shuffleCards([listOfUsers]);
+        await pokerService.shuffleCards([listOfUsers, pusher]);
         try{
             await pokerService.updatePlayersPlaying([listOfUsers]);
             try{
                 const allPlayers = await pokerService.getAllPlayers([pusher]);
-                console.log(allPlayers)
                 res.send(allPlayers);
             }catch(error){
                 next(error)
@@ -85,7 +82,6 @@ exports.shuffle = async(req, res, next) =>{
         }catch(e){
             next(e);
         }
-        console.log(allPlayers);
         res.send(allPlayers);
     }catch(err){
         next(err)
@@ -97,10 +93,10 @@ exports.makeMove = async(req, res, next) =>{
     try{
         await pokerService.makeMove([moveDetails]);
         try{
-            const list = await pokerService.changeTurn([moveDetails]);
+            const list = await pokerService.changeTurn([moveDetails, pusher]);
             try{
                 const allPlayers = await pokerService.getAllPlayers([pusher]);
-                console.log(allPlayers)
+                // console.log(allPlayers)
                 res.send(allPlayers);
             }catch(error){
                 next(error)
@@ -108,8 +104,18 @@ exports.makeMove = async(req, res, next) =>{
         }catch(e){
 
         }
-        console.log(allPlayers);
+        // console.log(allPlayers);
         res.send(allPlayers);
+    }catch(err){
+        next(err)
+    }
+}
+
+exports.payWinner = async(req, res, next) =>{
+    let winnerDetails = req.body;
+    try{
+        const result = await pokerService.payWinner([winnerDetails]);
+        res.send(result);
     }catch(err){
         next(err)
     }
