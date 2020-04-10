@@ -32,4 +32,10 @@ pokerController.makeMove
 pokerRouter.post('/payWinner', 
 pokerController.payWinner)
 
+pokerRouter.get('/getCards/:username',
+pokerController.getCards);
+
+pokerRouter.post('/getWinner/:firstUser/:secondUser?',
+pokerController.getWinner);
+
 module.exports = pokerRouter;

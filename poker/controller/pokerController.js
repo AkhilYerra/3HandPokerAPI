@@ -8,115 +8,142 @@ let pusher = new Pusher({
     secret: 'f25e8145d1d04dabe954',
     cluster: 'us2',
     useTLS: true
-  });
-exports.addPlayer = async (req, res, next) =>{
+});
+exports.addPlayer = async (req, res, next) => {
     playerToBeAdded = req.body.playerName;
-    let username = {userName: playerToBeAdded};
-    try{
-        const result = await pokerService.addPlayerToMongo([playerToBeAdded,pusher]);
+    let username = { userName: playerToBeAdded };
+    try {
+        const result = await pokerService.addPlayerToMongo([playerToBeAdded, pusher]);
         res.send(result.users);
-    }catch(err){
+    } catch (err) {
         next(err);
     }
 }
 
-exports.getPlayers = async (req, res, next) =>{
-    try{
+exports.getPlayers = async (req, res, next) => {
+    try {
         const result = await pokerService.retrieveUserList([pusher]);
         res.send(result.users);
-    }catch(err){
+    } catch (err) {
         next(err);
     }
 }
 
-exports.startGame = async(req, res, next) =>{
-    try{
+exports.startGame = async (req, res, next) => {
+    try {
         const result = await pokerService.startGame([pusher]);
         res.send(result);
-    }catch(err){
+    } catch (err) {
         next(err)
     }
 }
 
 
-exports.populatePlayers = async(req, res, next)=>{
+exports.populatePlayers = async (req, res, next) => {
     playerToBeAdded = req.body.playerName;
     betAmount = req.body.amount;
     let samplePlayer = {
-        name : playerToBeAdded,
-        amount:betAmount,
+        name: playerToBeAdded,
+        amount: betAmount,
         hasSeen: false,
-        hasFolded:false,
-        isYourTurn: (playerToBeAdded==='Admin' ? true : false),
-        cards:[],
+        hasFolded: false,
+        isYourTurn: (playerToBeAdded === 'Admin' ? true : false),
+        cards: [],
     }
-    try{
+    try {
         const result = await pokerService.populatePlayersForGame([samplePlayer]);
         res.send(result);
-    }catch(err){
+    } catch (err) {
         next(err)
     }
 }
 
-exports.getAllPlayers = async(req, res, next) =>{
-    try{
+exports.getAllPlayers = async (req, res, next) => {
+    try {
         const result = await pokerService.getAllPlayers([pusher]);
         res.send(result);
-    }catch(err){
+    } catch (err) {
         next(err)
     }
 }
 
-exports.shuffle = async(req, res, next) =>{
+exports.shuffle = async (req, res, next) => {
     listOfUsers = req.body;
-    try{
+    try {
         await pokerService.shuffleCards([listOfUsers, pusher]);
-        try{
+        try {
             await pokerService.updatePlayersPlaying([listOfUsers]);
-            try{
+            try {
                 const allPlayers = await pokerService.getAllPlayers([pusher]);
                 res.send(allPlayers);
-            }catch(error){
+            } catch (error) {
                 next(error)
-            }    
-        }catch(e){
+            }
+        } catch (e) {
             next(e);
         }
         res.send(allPlayers);
-    }catch(err){
+    } catch (err) {
         next(err)
     }
 }
 
-exports.makeMove = async(req, res, next) =>{
+exports.makeMove = async (req, res, next) => {
     let moveDetails = req.body;
-    try{
+    try {
         await pokerService.makeMove([moveDetails]);
-        try{
+        try {
             const list = await pokerService.changeTurn([moveDetails, pusher]);
-            try{
+            try {
                 const allPlayers = await pokerService.getAllPlayers([pusher]);
                 // console.log(allPlayers)
                 res.send(allPlayers);
-            }catch(error){
+            } catch (error) {
                 next(error)
-            }    
-        }catch(e){
+            }
+        } catch (e) {
 
         }
         // console.log(allPlayers);
         res.send(allPlayers);
-    }catch(err){
+    } catch (err) {
         next(err)
     }
 }
 
-exports.payWinner = async(req, res, next) =>{
+exports.payWinner = async (req, res, next) => {
     let winnerDetails = req.body;
-    try{
+    try {
         const result = await pokerService.payWinner([winnerDetails]);
         res.send(result);
-    }catch(err){
+    } catch (err) {
         next(err)
+    }
+}
+
+exports.getCards = async (req, res, next) => {
+    let username = req.params.username;
+    try {
+        const result = await pokerService.getCards([username]);
+        console.log(result.cards);
+        res.setHeader('Content-Type', 'application/json');
+        res.send(result.cards);
+    } catch (err) {
+        next(err)
+    }
+}
+
+exports.getWinner = async (req, res, next) => {
+    let firstUser = req.params.firstUser;
+    let secondUser = req.params.secondUser;
+    let userWhoPressedShow = req.query.pressedShow;
+    let potAmount = req.body.potAmount;
+    let playerAmount = req.body.playerAmount;
+    try{
+        let winner = await pokerService.getWinner([firstUser, secondUser, userWhoPressedShow, potAmount, playerAmount, pusher]);
+        res.setHeader('Content-Type', 'application/json');
+        res.send(winner);    
+    }catch(error){
+        next(error)
     }
 }

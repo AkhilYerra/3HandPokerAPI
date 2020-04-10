@@ -4,6 +4,7 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const routes = require('./routes/index')
+var cors = require('cors');
 var startup = require('./startup')
 
 var app = express();
@@ -13,6 +14,11 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 app.use(logger('dev'));
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+
+}));
 app.use(express.json({
   type: ['application/json', 'text/plain']
 }))
@@ -33,7 +39,6 @@ app.use(function(err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
-
   // render the error page
   res.status(err.status || 500);
 });
