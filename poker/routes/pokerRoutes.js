@@ -38,4 +38,9 @@ pokerController.getCards);
 pokerRouter.post('/getWinner/:firstUser/:secondUser?',
 pokerController.getWinner);
 
+pokerRouter.get('/endGame', 
+pokerController.endGame);
+
+pokerRouter.get('/fold', 
+pokerController.foldLastUser)
 module.exports = pokerRouter;

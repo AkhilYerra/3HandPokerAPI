@@ -23,7 +23,7 @@ const winningHands = {
   
 
 exports.addPlayerToMongo = async ([userNameToAdd, pusher]) => {
-    console.log("ADDING PLAYER");
+    //console.log("ADDING PLAYER");
     try {
         let results = await listOfUsersSchema.findOneAndUpdate(
             { "type": 'ListOfPlayers' },
@@ -59,12 +59,11 @@ exports.startGame = async ([pusher]) => {
     pusher.trigger('3HandPoker', 'startGame', {
         'hasGameStarted': true,
     });
-    console.log("START")
+    //console.log("START")
     return (null, 'SUCCESS');
 }
 
 exports.populatePlayersForGame = async ([samplePlayer]) => {
-    // console.log("YEAAHHHH")
     let results = await playerSchema.create(
         samplePlayer,
         function (err, raw) {
@@ -79,7 +78,7 @@ exports.populatePlayersForGame = async ([samplePlayer]) => {
 }
 
 exports.getAllPlayers = async ([pusher]) => {
-    console.log("GETTING")
+    //console.log("GETTING")
     let results = await playerSchema.find(
         {},
         function (err, raw) {
@@ -92,7 +91,6 @@ exports.getAllPlayers = async ([pusher]) => {
     for (let i = 0; i < results.length; i++) {
         AllPlayers[results[i].name] = results[i];
     }
-    console.log(AllPlayers);
     pusher.trigger('3HandPoker', 'getAllPlayers', {
         'AllPlayers': AllPlayers,
     });
@@ -109,8 +107,8 @@ exports.updatePlayersPlaying = async ([listOfUsers]) => {
 }
 
 exports.shuffleCards = async ([listOfUsers, pusher]) => {
-    console.log("SHUFFLING")
-    console.log(listOfUsers.length)
+    //console.log("SHUFFLING")
+    //console.log(listOfUsers.length)
     let fullDeck = createDeckOfCards();
     for (let i = 0; i < listOfUsers.length; i++) {
         let arrayOfCards = [];
@@ -131,7 +129,7 @@ exports.shuffleCards = async ([listOfUsers, pusher]) => {
                 }
             });
     }
-    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'playersRemaining': listOfUsers.length, 'pot': 0.00, 'blindAmount': 1, 'seenAmount': 1, 'playersInRound': listOfUsers,'winnerDetermined':false } }, { upsert: true, returnOriginal: false, useFindAndModify: false, new: true },
+    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'playersRemaining': listOfUsers.length, 'pot': 0.00, 'blindAmount': 1, 'seenAmount': 1, 'playersInRound': listOfUsers,'hasWinner':false,'gameEnded':false } }, { upsert: true, returnOriginal: false, useFindAndModify: false, new: true },
         function (error, raw) {
             if (error) {
                 return error;
@@ -143,9 +141,10 @@ exports.shuffleCards = async ([listOfUsers, pusher]) => {
                 pot: raw.pot,
                 blindAmount: raw.blindAmount,
                 seenAmount: raw.seenAmount,
-                winnerDetermined: false
+                hasWinner: false, 
+                gameEnded: false
             }
-            console.log(sampleObj)
+            //console.log(sampleObj)
 
             pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
         });
@@ -185,13 +184,13 @@ exports.makeMove = async ([moveDetails]) => {
             if (error) {
                 return error;
             }
-            console.log("FINSIHED");
+            //console.log("FINSIHED");
         });
     return null;
 }
 
 exports.changeTurn = async ([moveDetails, pusher]) => {
-    console.log("CHANGINS")
+    //console.log("CHANGINS")
     let username = moveDetails.username;
     let hasSeen = moveDetails.hasSeen;
     let hasFolded = moveDetails.hasFolded;
@@ -268,7 +267,8 @@ exports.changeTurn = async ([moveDetails, pusher]) => {
                 pot: raw.pot,
                 blindAmount: raw.blindAmount,
                 seenAmount: raw.seenAmount,
-                winnerDetermined: false
+                hasWinner: false,
+                gameEnded:false
 
             }
             pusher.trigger('3HandPoker', 'retrieveGameState',
@@ -281,29 +281,29 @@ exports.changeTurn = async ([moveDetails, pusher]) => {
 }
 
 exports.payWinner = async ([winnerDetails]) => {
-    console.log("WINNER PAID");
+    //console.log("WINNER PAID");
     let username = winnerDetails.username;
     let potAmount = winnerDetails.potAmount;
-    console.log(`This much pot : ${potAmount}`)
+    //console.log(`This much pot : ${potAmount}`)
     try {
         let update = await playerSchema.findOneAndUpdate({ 'name': username }, { '$inc': { 'amount': potAmount } }, { useFindAndModify: false });
         return update;
     } catch (error) {
-        console.log(error);
+        //console.log(error);
         return error;
     }
     return update;
 }
 
 exports.getCards = async ([username]) => {
-    console.log("GETTING CARDS");
-    console.log(username)
+    //console.log("GETTING CARDS");
+    //console.log(username)
     try {
         let cards = await playerSchema.findOne({ 'name': username }).select('cards');
-        console.log(cards);
+        //console.log(cards);
         return cards;
     } catch (error) {
-        console.log(error);
+        //console.log(error);
         return error;
     }
     return cards;
@@ -322,24 +322,6 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
     let gameStatusRecent = await gameStatusSchema.findOne({ 'gameId': 'Uno3Hand' });
     let oldPot = Number(gameStatusRecent.pot.toString());
     let newPot = oldPot + Number(amount);
-    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'pot':newPot,'winnerDetermined':true } }, { returnOriginal: false, useFindAndModify: false, new: true },
-        function (error, raw) {
-            if (error) {
-                return error;
-            }
-            let sampleObj = {
-                gameId: raw.gameId,
-                playersRemaining: raw.playersRemaining,
-                playersInRound: raw.playersInRound,
-                pot: raw.pot,
-                blindAmount: raw.blindAmount,
-                seenAmount: raw.seenAmount, 
-                winnerDetermined: true
-            }
-            console.log(sampleObj)
-
-            pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
-        });
     if (winnerFromMethod.both === true) {
         if (userWhoPressedShow === firstUser) {
             let winnerDetails = {
@@ -355,9 +337,29 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
                 },
                 winner: secondUser
             }
-            console.log(winnerDetails)
+            //console.log(winnerDetails)
             pusher.trigger('3HandPoker', 'getWinner',
         winnerDetails);
+        await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'pot':newPot,'hasWinner':true } }, { returnOriginal: false, useFindAndModify: false, new: true },
+        function (error, raw) {
+            if (error) {
+                return error;
+            }
+            let sampleObj = {
+                gameId: raw.gameId,
+                playersRemaining: raw.playersRemaining,
+                playersInRound: raw.playersInRound,
+                pot: raw.pot,
+                blindAmount: raw.blindAmount,
+                seenAmount: raw.seenAmount, 
+                hasWinner: true,
+                gameEnded:false
+            }
+            //console.log(sampleObj)
+
+            pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+        });
+
             return winnerDetails;
         } else {
             let winnerDetails = {
@@ -373,9 +375,29 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
                 },
                 winner: firstUser
             }
-            console.log(winnerDetails)
+            //console.log(winnerDetails)
             pusher.trigger('3HandPoker', 'getWinner',
         winnerDetails);
+        await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'pot':newPot,'hasWinner':true } }, { returnOriginal: false, useFindAndModify: false, new: true },
+        function (error, raw) {
+            if (error) {
+                return error;
+            }
+            let sampleObj = {
+                gameId: raw.gameId,
+                playersRemaining: raw.playersRemaining,
+                playersInRound: raw.playersInRound,
+                pot: raw.pot,
+                blindAmount: raw.blindAmount,
+                seenAmount: raw.seenAmount, 
+                hasWinner: true,
+                gameEnded:false
+            }
+            //console.log(sampleObj)
+
+            pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+        });
+
             return winnerDetails;
         }
     } else {
@@ -394,7 +416,27 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
         }
         pusher.trigger('3HandPoker', 'getWinner',
         winnerDetails);
-        console.log(winnerDetails)
+        //console.log(winnerDetails)
+        await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'pot':newPot,'hasWinner':true } }, { returnOriginal: false, useFindAndModify: false, new: true },
+        function (error, raw) {
+            if (error) {
+                return error;
+            }
+            let sampleObj = {
+                gameId: raw.gameId,
+                playersRemaining: raw.playersRemaining,
+                playersInRound: raw.playersInRound,
+                pot: raw.pot,
+                blindAmount: raw.blindAmount,
+                seenAmount: raw.seenAmount, 
+                hasWinner: true,
+                gameEnded:false
+            }
+            //console.log(sampleObj)
+
+            pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+        });
+
         return winnerDetails;
     }
 }
@@ -406,7 +448,7 @@ exports.findHand = ([cards]) =>{
     let pair = false;
     let sequence = [cards[0].value, cards[1].value, cards[2].value];
     sequence.sort(function(a, b){return a-b});
-    console.log(sequence);
+    //console.log(sequence);
     highCard = sequence[2];
     if ((sequence[0] === sequence[1]) && (sequence[1] === sequence[2])) {
       triple = true;
@@ -436,7 +478,7 @@ exports.findHand = ([cards]) =>{
         hand: winningHands.STRAIGHT,
         highCard: highCard
       }
-      console.log()
+      //console.log()
       return response;
     } else if (isSequence === false && isSameSuite === true) {
       let response = {
@@ -506,3 +548,49 @@ exports.passBackWinner = ([firstPlayer, secondPlayer, firstUser, secondUser]) =>
   
     }
   }
+
+
+exports.endGame = async ([pusher]) =>{
+    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'gameEnded':true } }, { returnOriginal: false, useFindAndModify: false, new: true },
+        function (error, raw) {
+            if (error) {
+                return error;
+            }
+            let sampleObj = {
+                gameId: raw.gameId,
+                playersRemaining: raw.playersRemaining,
+                playersInRound: raw.playersInRound,
+                pot: raw.pot,
+                blindAmount: raw.blindAmount,
+                seenAmount: raw.seenAmount, 
+                hasWinner: true,
+                gameEnded:true
+            }
+            pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+        });
+
+    await gameStatusSchema.collection.drop();
+    await playerListSchema.collection.drop();
+    await playerSchema.collection.drop();
+    await listOfUsersSchema.collection.drop();
+}
+
+exports.foldUser = async([pusher]) =>{
+    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'hasWinner':true } }, { returnOriginal: false, useFindAndModify: false, new: true },
+    function (error, raw) {
+        if (error) {
+            return error;
+        }
+        let sampleObj = {
+            gameId: raw.gameId,
+            playersRemaining: raw.playersRemaining,
+            playersInRound: raw.playersInRound,
+            pot: raw.pot,
+            blindAmount: raw.blindAmount,
+            seenAmount: raw.seenAmount, 
+            hasWinner: true,
+            gameEnded:false
+        }
+        pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+    });
+}

@@ -96,7 +96,7 @@ exports.makeMove = async (req, res, next) => {
             const list = await pokerService.changeTurn([moveDetails, pusher]);
             try {
                 const allPlayers = await pokerService.getAllPlayers([pusher]);
-                // console.log(allPlayers)
+                // //console.log(allPlayers)
                 res.send(allPlayers);
             } catch (error) {
                 next(error)
@@ -104,7 +104,7 @@ exports.makeMove = async (req, res, next) => {
         } catch (e) {
 
         }
-        // console.log(allPlayers);
+        // //console.log(allPlayers);
         res.send(allPlayers);
     } catch (err) {
         next(err)
@@ -125,7 +125,6 @@ exports.getCards = async (req, res, next) => {
     let username = req.params.username;
     try {
         const result = await pokerService.getCards([username]);
-        console.log(result.cards);
         res.setHeader('Content-Type', 'application/json');
         res.send(result.cards);
     } catch (err) {
@@ -143,6 +142,26 @@ exports.getWinner = async (req, res, next) => {
         let winner = await pokerService.getWinner([firstUser, secondUser, userWhoPressedShow, potAmount, playerAmount, pusher]);
         res.setHeader('Content-Type', 'application/json');
         res.send(winner);    
+    }catch(error){
+        next(error)
+    }
+}
+
+exports.endGame = async(req, res, next)=>{
+    try{
+        let gameEnded = await pokerService.endGame([pusher]);
+        res.setHeader('Content-Type', 'application/json');
+        res.send(gameEnded);    
+    }catch(error){
+        next(error)
+    }
+}
+
+exports.foldLastUser = async(req, res, next)=>{
+    try{
+        let gameEnded = await pokerService.foldUser([pusher]);
+        res.setHeader('Content-Type', 'application/json');
+        res.send(gameEnded);    
     }catch(error){
         next(error)
     }

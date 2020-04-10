@@ -7,7 +7,8 @@ var mongoose = require('mongoose');
     blindAmount: Number,
     seenAmount:Number,
     playersInRound:Array,
-    winnerDetermined:Boolean 
+    hasWinner:Boolean,
+    gameEnded:Boolean 
   });
 
   module.exports = mongoose.model('gameStatus', gameStatus);
