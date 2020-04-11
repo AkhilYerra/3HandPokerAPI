@@ -166,3 +166,14 @@ exports.foldLastUser = async(req, res, next)=>{
         next(error)
     }
 }
+
+exports.seeCards = async(req, res, next)=>{
+    let username = req.params.username;
+    try{
+        let gameEnded = await pokerService.seeCards([username, pusher]);
+        res.setHeader('Content-Type', 'application/json');
+        res.send(gameEnded);    
+    }catch(error){
+        next(error)
+    }
+}

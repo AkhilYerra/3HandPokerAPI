@@ -623,3 +623,14 @@ exports.foldUser = async([pusher]) =>{
         pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
     });
 }
+
+exports.seeCards = async([username, pusher]) =>{
+    playerSchema.findOneAndUpdate({ 'name': username }, { '$set': { 'hasSeen': true } },{ returnOriginal: false, useFindAndModify: false, new: true },
+        function (error, properties) {
+            if (error) {
+                return error;
+            }
+            return;
+        });
+
+}

@@ -43,4 +43,7 @@ pokerController.endGame);
 
 pokerRouter.get('/fold', 
 pokerController.foldLastUser)
+
+pokerRouter.get('/seeCards/:username', 
+pokerController.seeCards)
 module.exports = pokerRouter;
