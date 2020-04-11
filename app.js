@@ -18,7 +18,7 @@ app.use(logger('dev'));
 //DEV URL : https://handpoker-3494e.web.app
 //LOCAL URL: http://localhost:3000
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'https://handpoker-3494e.web.app',
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
 
 }));
