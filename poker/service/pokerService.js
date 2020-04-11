@@ -4,6 +4,7 @@ const playerSchema = require('../schema/playerSchema')
 const playerListSchema = require('../schema/playerListSchema')
 const Card = require('../model/card')
 const gameStatusSchema = require('../schema/gameStatusSchema')
+const _ = require('lodash');
 const winOrder = [
     'STRAIGHT_FLUSH',
     'THREE_OF_A_KIND',
@@ -47,9 +48,11 @@ exports.retrieveUserList = async ([pusher]) => {
             if (err) {
                 return err;
             }
-            pusher.trigger('3HandPoker', 'retrieveUserList', {
-                'arrayOfUsers': raw.users,
-            });
+            if(!_.isUndefined(raw.users)){
+                pusher.trigger('3HandPoker', 'retrieveUserList', {
+                    'arrayOfUsers': raw.users,
+                });    
+            }
         }
     );
     return (null, results);
@@ -357,10 +360,18 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
             }
             //console.log(sampleObj)
 
-            pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+            let details = {username:winnerDetails.winner,potAmount:sampleObj.pot}
+            playerSchema.findOneAndUpdate({ 'name': details.username }, { $inc: { 'amount': newPot } }, { returnOriginal: false, useFindAndModify: false, new: true }, function(err, success){
+                if(err){
+                    return err;
+                }
+                console.log(success)
+                console.log(Number(success.amount.toString()))
+                pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+                return winnerDetails;
+            });
         });
 
-            return winnerDetails;
         } else {
             let winnerDetails = {
                 firstPersonDetails: {
@@ -394,11 +405,19 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
                 gameEnded:false
             }
             //console.log(sampleObj)
-
-            pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+            let details = {username:winnerDetails.winner,potAmount:sampleObj.pot}
+            playerSchema.findOneAndUpdate({ 'name': details.username }, { $inc: { 'amount': newPot } }, { returnOriginal: false, useFindAndModify: false, new: true }, function(err, success){
+                if(err){
+                    return err;
+                }
+                console.log(success)
+                console.log(Number(success.amount.toString()))
+                pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+                return winnerDetails;
+            });
         });
 
-            return winnerDetails;
+            // return winnerDetails;
         }
     } else {
         let winnerDetails = {
@@ -433,11 +452,21 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
                 gameEnded:false
             }
             //console.log(sampleObj)
+            let details = {username:winnerDetails.winner,potAmount:sampleObj.pot}
+            playerSchema.findOneAndUpdate({ 'name': details.username }, { $inc: { 'amount': newPot } }, { returnOriginal: false, useFindAndModify: false, new: true }, function(err, success){
+                if(err){
+                    return err;
+                }
+                console.log(success)
+                console.log(Number(success.amount.toString()))
+                pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+                return winnerDetails;
+            });
 
-            pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+           
         });
 
-        return winnerDetails;
+        
     }
 }
 exports.findHand = ([cards]) =>{
