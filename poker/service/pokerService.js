@@ -630,7 +630,23 @@ exports.seeCards = async([username, pusher]) =>{
             if (error) {
                 return error;
             }
-            return;
+            let results = playerSchema.find(
+                {},
+                function (err, raw) {
+                    if (err) {
+                        return err;
+                    }
+                    let AllPlayers = {};
+                    for (let i = 0; i < raw.length; i++) {
+                        AllPlayers[raw[i].name] = raw[i];
+                    }
+                    pusher.trigger('3HandPoker', 'getAllPlayers', {
+                        'AllPlayers': AllPlayers,
+                    });
+                    return (null, AllPlayers);
+        
+                }    
+            );
         });
 
 }
