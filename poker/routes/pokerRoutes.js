@@ -46,4 +46,11 @@ pokerController.foldLastUser)
 
 pokerRouter.get('/seeCards/:username', 
 pokerController.seeCards)
+
+pokerRouter.post('/consult/:consultUser/:userToConsult',
+pokerController.consult);
+
+pokerRouter.get('/unConsult',
+pokerController.unConsult);
+
 module.exports = pokerRouter;

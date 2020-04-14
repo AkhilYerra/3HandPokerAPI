@@ -48,7 +48,7 @@ exports.retrieveUserList = async ([pusher]) => {
             if (err) {
                 return err;
             }
-            if(!_.isUndefined(raw.users)){
+            if(!_.isUndefined(raw)){
                 pusher.trigger('3HandPoker', 'retrieveUserList', {
                     'arrayOfUsers': raw.users,
                 });    
@@ -132,7 +132,7 @@ exports.shuffleCards = async ([listOfUsers, pusher]) => {
                 }
             });
     }
-    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'playersRemaining': listOfUsers.length, 'pot': 0.00, 'blindAmount': 1, 'seenAmount': 1, 'playersInRound': listOfUsers,'hasWinner':false,'gameEnded':false } }, { upsert: true, returnOriginal: false, useFindAndModify: false, new: true },
+    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'playersRemaining': listOfUsers.length, 'pot': 0.00, 'blindAmount': 1, 'seenAmount': 1, 'playersInRound': listOfUsers,'seenPlayersInRound':[],'hasWinner':false,'gameEnded':false, 'consultInProgress':false } }, { upsert: true, returnOriginal: false, useFindAndModify: false, new: true },
         function (error, raw) {
             if (error) {
                 return error;
@@ -145,7 +145,9 @@ exports.shuffleCards = async ([listOfUsers, pusher]) => {
                 blindAmount: raw.blindAmount,
                 seenAmount: raw.seenAmount,
                 hasWinner: false, 
-                gameEnded: false
+                gameEnded: false,
+                seenPlayersInRound: raw.seenPlayersInRound,
+                consultInProgress:false
             }
             //console.log(sampleObj)
 
@@ -271,7 +273,9 @@ exports.changeTurn = async ([moveDetails, pusher]) => {
                 blindAmount: raw.blindAmount,
                 seenAmount: raw.seenAmount,
                 hasWinner: false,
-                gameEnded:false
+                gameEnded:false,
+                seenPlayersInRound: raw.seenPlayersInRound,
+                consultInProgress:false
 
             }
             pusher.trigger('3HandPoker', 'retrieveGameState',
@@ -356,7 +360,9 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
                 blindAmount: raw.blindAmount,
                 seenAmount: raw.seenAmount, 
                 hasWinner: true,
-                gameEnded:false
+                gameEnded:false,
+                seenPlayersInRound: raw.seenPlayersInRound,
+                consultInProgress:false
             }
             //console.log(sampleObj)
 
@@ -402,7 +408,9 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
                 blindAmount: raw.blindAmount,
                 seenAmount: raw.seenAmount, 
                 hasWinner: true,
-                gameEnded:false
+                gameEnded:false,
+                seenPlayersInRound : raw.seenPlayersInRound,
+                consultInProgress:false
             }
             //console.log(sampleObj)
             let details = {username:winnerDetails.winner,potAmount:sampleObj.pot}
@@ -449,7 +457,9 @@ exports.getWinner = async ([firstUser, secondUser, userWhoPressedShow, amount, p
                 blindAmount: raw.blindAmount,
                 seenAmount: raw.seenAmount, 
                 hasWinner: true,
-                gameEnded:false
+                gameEnded:false,
+                seenPlayersInRound: raw.seenPlayersInRound,
+                consultInProgress:false
             }
             //console.log(sampleObj)
             let details = {username:winnerDetails.winner,potAmount:sampleObj.pot}
@@ -592,8 +602,10 @@ exports.endGame = async ([pusher]) =>{
                 pot: raw.pot,
                 blindAmount: raw.blindAmount,
                 seenAmount: raw.seenAmount, 
-                hasWinner: true,
-                gameEnded:true
+                hasWinner: false,
+                gameEnded:true,
+                seenPlayersInRound: raw.seenPlayersInRound,
+                consultInProgress:false
             }
             pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
         });
@@ -618,7 +630,9 @@ exports.foldUser = async([pusher]) =>{
             blindAmount: raw.blindAmount,
             seenAmount: raw.seenAmount, 
             hasWinner: true,
-            gameEnded:false
+            gameEnded:false,
+            seenPlayersInRound : raw.seenPlayersInRound,
+            consultInProgress:false
         }
         pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
     });
@@ -643,10 +657,157 @@ exports.seeCards = async([username, pusher]) =>{
                     pusher.trigger('3HandPoker', 'getAllPlayers', {
                         'AllPlayers': AllPlayers,
                     });
-                    return (null, AllPlayers);
+                    gameStatusSchema.findOneAndUpdate(
+                        { "gameId": 'Uno3Hand' },
+                        { "$addToSet": { "seenPlayersInRound": username } },
+                        { returnOriginal: false, useFindAndModify: false, new: true, upsert: true },function(err, raw){
+                            pusher.trigger('3HandPoker', 'retrieveGameState', raw);
+                            return (null, AllPlayers);
+                        }
+                    );
         
                 }    
             );
         });
 
+}
+
+exports.consult = async([firstUser, secondUser, playerCash, playerBet, pusher]) =>{
+    let cardsOfFirstPlayer = await this.getCards([firstUser]);
+    let cardsOfSecondPlayer = await this.getCards([secondUser]);
+    cardsOfFirstPlayer = cardsOfFirstPlayer.cards;
+    cardsOfSecondPlayer = cardsOfSecondPlayer.cards
+    let firstPlayerHand = this.findHand([cardsOfFirstPlayer]);
+    let secondPlayerHand = this.findHand([cardsOfSecondPlayer]);
+    let winnerFromMethod = this.passBackWinner([firstPlayerHand, secondPlayerHand, firstUser, secondUser]);
+    let reducedAmount = playerCash - playerBet;
+    await playerSchema.findOneAndUpdate({ 'name': firstUser }, { '$set': {'amount': reducedAmount, isYourTurn:false} }, { returnOriginal: false, useFindAndModify: false, new: true });
+    let gameStatusRecent = await gameStatusSchema.findOne({ 'gameId': 'Uno3Hand' });
+    let oldPot = Number(gameStatusRecent.pot.toString());
+    let newPot = oldPot + Number(playerBet);
+    if (winnerFromMethod.both === true) {
+            let consultDetails = {
+                firstPersonDetails: {
+                    cards: cardsOfFirstPlayer,
+                    hand: firstPlayerHand.hand,
+                    username: firstUser,
+                },
+                secondPersonDetails: {
+                    cards: cardsOfSecondPlayer,
+                    hand: secondPlayerHand.hand,
+                    username: secondUser
+                },
+                consulter: firstUser, 
+                consultant: secondUser,
+                consultWinner: secondUser
+            }
+            //console.log(winnerDetails)
+            pusher.trigger('3HandPoker', 'getConsult',
+            consultDetails);
+            await playerSchema.findOneAndUpdate({ 'name': firstUser }, { '$set': {hasFolded: true, isYourTurn:false} }, { returnOriginal: false, useFindAndModify: false, new: true });
+            let indexOfLoser = gameStatusRecent.playersInRound.indexOf(firstUser);
+            let tempPlayers = gameStatusRecent.playersInRound;
+            let indexOfNextPlayer = indexOfLoser + 1;
+            tempPlayers.splice(indexOfLoser,1);
+            if(indexOfNextPlayer + 1 > gameStatusRecent.playersInRound.length){
+                indexOfNextPlayer = 0;
+            }
+            await playerSchema.findOneAndUpdate({ 'name': gameStatusRecent.playersInRound[indexOfNextPlayer] }, { '$set': {isYourTurn:true} }, { returnOriginal: false, useFindAndModify: false, new: true });
+            let indexOfLoser2 = gameStatusRecent.seenPlayersInRound.indexOf(firstUser);
+            let tempSeen = gameStatusRecent.seenPlayersInRound;
+            tempSeen.splice(indexOfLoser2,1);
+        await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'pot':newPot, 'playersInRound':tempPlayers, 'seenPlayersInRound':tempSeen, 'playersRemaining':tempPlayers.length, 'consultInProgress':true} }, { returnOriginal: false, useFindAndModify: false, new: true },
+        function (error, raw) {
+            if (error) {
+                return error;
+            }
+            let sampleObj = {
+                gameId: raw.gameId,
+                playersRemaining: raw.playersRemaining,
+                playersInRound: raw.playersInRound,
+                pot: raw.pot,
+                blindAmount: raw.blindAmount,
+                seenAmount: raw.seenAmount, 
+                hasWinner: false,
+                gameEnded:false,
+                seenPlayersInRound: raw.seenPlayersInRound,
+                consultInProgress:true
+            }
+                pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+                return consultDetails;
+        });
+
+    } else {
+        let consultDetails = {
+            firstPersonDetails: {
+                cards: cardsOfFirstPlayer,
+                hand: firstPlayerHand.hand,
+                username: firstUser,
+            },
+            secondPersonDetails: {
+                cards: cardsOfSecondPlayer,
+                hand: secondPlayerHand.hand,
+                username: secondUser
+            },
+            consulter: firstUser, 
+            consultant: secondUser,
+            consultWinner: winnerFromMethod.user
+        }
+        //console.log(winnerDetails
+        let loserName = ''
+        if(consultDetails.firstPersonDetails.username === winnerFromMethod.user){
+            loserName = consultDetails.secondPersonDetails.username
+        }else{
+            loserName = consultDetails.firstPersonDetails.username
+        }
+        await playerSchema.findOneAndUpdate({ 'name': loserName }, { '$set': {hasFolded: true, isYourTurn:false} }, { returnOriginal: false, useFindAndModify: false, new: true });
+        pusher.trigger('3HandPoker', 'getConsult',
+        consultDetails);
+        let indexOfLoser = gameStatusRecent.playersInRound.indexOf(loserName);
+        let indexOfNextPlayer = gameStatusRecent.playersInRound.indexOf(firstUser) + 1;
+        let tempPlayers = gameStatusRecent.playersInRound;
+        tempPlayers.splice(indexOfLoser,1);
+        if(indexOfNextPlayer + 1 > gameStatusRecent.playersInRound.length){
+            indexOfNextPlayer = 0;
+        }
+        await playerSchema.findOneAndUpdate({ 'name': gameStatusRecent.playersInRound[indexOfNextPlayer] }, { '$set': {isYourTurn:true} }, { returnOriginal: false, useFindAndModify: false, new: true });
+        let indexOfLoser2 = gameStatusRecent.seenPlayersInRound.indexOf(loserName);
+        let tempSeen = gameStatusRecent.seenPlayersInRound;
+        tempSeen.splice(indexOfLoser2,1);
+    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'pot':newPot, 'playersInRound':tempPlayers, 'seenPlayersInRound':tempSeen, 'playersRemaining':tempPlayers.length, 'consultInProgress':true} }, { returnOriginal: false, useFindAndModify: false, new: true },
+    function (error, raw) {
+            if (error) {
+                return error;
+            }
+            let sampleObj = {
+                gameId: raw.gameId,
+                playersRemaining: raw.playersRemaining,
+                playersInRound: raw.playersInRound,
+                pot: raw.pot,
+                blindAmount: raw.blindAmount,
+                seenAmount: raw.seenAmount, 
+                hasWinner: false,
+                gameEnded:false,
+                seenPlayersInRound: raw.seenPlayersInRound,
+                consultInProgress:true
+            }
+                pusher.trigger('3HandPoker', 'retrieveGameState', sampleObj);
+
+                return consultDetails
+           
+        });
+
+        
+    }
+}
+
+exports.unConsult = async([pusher]) =>{
+    await gameStatusSchema.findOneAndUpdate(
+        { "gameId": 'Uno3Hand' },
+        { "$set": { "consultInProgress": false } },
+        { returnOriginal: false, useFindAndModify: false, new: true, upsert: true },function(err, raw){
+            pusher.trigger('3HandPoker', 'retrieveGameState', raw);
+            return (null, raw);
+        }
+    );
 }

@@ -177,3 +177,28 @@ exports.seeCards = async(req, res, next)=>{
         next(error)
     }
 }
+
+
+exports.consult = async(req, res, next)=>{
+    let firstUser = req.params.consultUser;
+    let secondUser = req.params.userToConsult;
+    let playerBet = req.body.amountPlayerBet;
+    let playerCash = req.body.amountPlayerHas;
+    try{
+        let winner = await pokerService.consult([firstUser, secondUser, playerCash, playerBet, pusher]);
+        res.setHeader('Content-Type', 'application/json');
+        res.send(winner);    
+    }catch(error){
+        next(error)
+    }
+}
+
+exports.unConsult = async(req,res, next)=>{
+    try{
+        let winner = await pokerService.unConsult([pusher]);
+        res.setHeader('Content-Type', 'application/json');
+        res.send(winner);    
+    }catch(error){
+        next(error)
+    }
+}
