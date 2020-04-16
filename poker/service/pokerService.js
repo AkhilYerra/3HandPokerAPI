@@ -708,11 +708,13 @@ exports.consult = async([firstUser, secondUser, playerCash, playerBet, pusher]) 
             let indexOfLoser = gameStatusRecent.playersInRound.indexOf(firstUser);
             let tempPlayers = gameStatusRecent.playersInRound;
             let indexOfNextPlayer = indexOfLoser + 1;
-            tempPlayers.splice(indexOfLoser,1);
-            if(indexOfNextPlayer + 1 > gameStatusRecent.playersInRound.length){
+            if(indexOfNextPlayer >= gameStatusRecent.playersInRound.length){
                 indexOfNextPlayer = 0;
             }
-            await playerSchema.findOneAndUpdate({ 'name': gameStatusRecent.playersInRound[indexOfNextPlayer] }, { '$set': {isYourTurn:true} }, { returnOriginal: false, useFindAndModify: false, new: true });
+            let nextPlayer = gameStatusRecent.playersInRound[indexOfNextPlayer];
+            tempPlayers.splice(indexOfLoser,1);
+            await playerListSchema.findOneAndUpdate({ 'name': 'PlayerList' }, { '$set': { 'list': tempPlayers } }, { returnOriginal: false, useFindAndModify: false, new: true })
+            await playerSchema.findOneAndUpdate({ 'name': nextPlayer }, { '$set': {isYourTurn:true} }, { returnOriginal: false, useFindAndModify: false, new: true });
             let indexOfLoser2 = gameStatusRecent.seenPlayersInRound.indexOf(firstUser);
             let tempSeen = gameStatusRecent.seenPlayersInRound;
             tempSeen.splice(indexOfLoser2,1);
@@ -765,12 +767,17 @@ exports.consult = async([firstUser, secondUser, playerCash, playerBet, pusher]) 
         consultDetails);
         let indexOfLoser = gameStatusRecent.playersInRound.indexOf(loserName);
         let indexOfNextPlayer = gameStatusRecent.playersInRound.indexOf(firstUser) + 1;
-        let tempPlayers = gameStatusRecent.playersInRound;
-        tempPlayers.splice(indexOfLoser,1);
-        if(indexOfNextPlayer + 1 > gameStatusRecent.playersInRound.length){
-            indexOfNextPlayer = 0;
+        if(indexOfNextPlayer === indexOfLoser){
+            indexOfNextPlayer = indexOfNextPlayer + 1;
         }
-        await playerSchema.findOneAndUpdate({ 'name': gameStatusRecent.playersInRound[indexOfNextPlayer] }, { '$set': {isYourTurn:true} }, { returnOriginal: false, useFindAndModify: false, new: true });
+        let tempPlayers = gameStatusRecent.playersInRound;
+            if(indexOfNextPlayer >= gameStatusRecent.playersInRound.length){
+                indexOfNextPlayer = 0;
+            }
+        let nextPlayer = gameStatusRecent.playersInRound[indexOfNextPlayer];
+        tempPlayers.splice(indexOfLoser,1);
+        await playerListSchema.findOneAndUpdate({ 'name': 'PlayerList' }, { '$set': { 'list': tempPlayers } }, { returnOriginal: false, useFindAndModify: false, new: true })
+        await playerSchema.findOneAndUpdate({ 'name': nextPlayer }, { '$set': {isYourTurn:true} }, { returnOriginal: false, useFindAndModify: false, new: true });
         let indexOfLoser2 = gameStatusRecent.seenPlayersInRound.indexOf(loserName);
         let tempSeen = gameStatusRecent.seenPlayersInRound;
         tempSeen.splice(indexOfLoser2,1);
