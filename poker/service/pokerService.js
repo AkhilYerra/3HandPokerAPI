@@ -1,7 +1,6 @@
 const mongoose = require('mongoose')
 const listOfUsersSchema = require('../schema/ListOfUsersSchema')
 const playerSchema = require('../schema/playerSchema')
-const playerListSchema = require('../schema/playerListSchema')
 const Card = require('../model/card')
 const gameStatusSchema = require('../schema/gameStatusSchema')
 const _ = require('lodash');
@@ -67,8 +66,9 @@ exports.startGame = async ([pusher]) => {
 }
 
 exports.populatePlayersForGame = async ([samplePlayer]) => {
-    let results = await playerSchema.create(
-        samplePlayer,
+    let results = await gameStatusSchema.findOneAndUpdate({},
+        { "$addToSet": { "ListOfPlayers": samplePlayer } },
+        { returnOriginal: false, useFindAndModify: false, new: true, upsert: true },
         function (err, raw) {
             if (err) {
                 return err;
@@ -82,17 +82,17 @@ exports.populatePlayersForGame = async ([samplePlayer]) => {
 
 exports.getAllPlayers = async ([pusher]) => {
     //console.log("GETTING")
-    let results = await playerSchema.find(
+    let results = await gameStatusSchema.find(
         {},
         function (err, raw) {
             if (err) {
                 return err;
             }
         }
-    );
+    )
     let AllPlayers = {};
-    for (let i = 0; i < results.length; i++) {
-        AllPlayers[results[i].name] = results[i];
+    for (let i = 0; i < results[0].ListOfPlayers.length; i++) {
+        AllPlayers[results[0].ListOfPlayers[i].name] = results[0].ListOfPlayers[i];
     }
     pusher.trigger('3HandPoker', 'getAllPlayers', {
         'AllPlayers': AllPlayers,
@@ -101,7 +101,7 @@ exports.getAllPlayers = async ([pusher]) => {
 }
 
 exports.updatePlayersPlaying = async ([listOfUsers]) => {
-    playerListSchema.findOneAndUpdate({ 'name': 'PlayerList' }, { '$set': { 'list': listOfUsers } }, { upsert: true },
+    listOfUsersSchema.findOneAndUpdate({ 'name': 'listOfUsers' }, { '$set': { 'list': listOfUsers } }, { upsert: true },
         function (error, properties) {
             if (error) {
                 return error;
@@ -125,14 +125,16 @@ exports.shuffleCards = async ([listOfUsers, pusher]) => {
         if (listOfUsers[i] === 'Admin') {
             yourTurn = true;
         }
-        await playerSchema.findOneAndUpdate({ 'name': listOfUsers[i] }, { '$set': { 'cards': arrayOfCards, 'hasSeen': false, 'hasFolded': false, 'isYourTurn': yourTurn } },
+        let ListOfUsers = [];
+        let listOfUser = await gameStatusSchema.findOneAndUpdate({ 'ListOfPlayers.name': listOfUsers[i]}, { '$set': { 'ListOfPlayers.$.cards': arrayOfCards, 'ListOfPlayers.$.hasSeen': false, 'ListOfPlayers.$.hasFolded': false, 'ListOfPlayers.$.isYourTurn': yourTurn } },{ upsert: true, returnOriginal: false, useFindAndModify: false, new: true },
             function (error, properties) {
                 if (error) {
                     return error;
                 }
             });
+        ListOfUsers.push(listOfUser);
     }
-    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'playersRemaining': listOfUsers.length, 'pot': 0.00, 'blindAmount': 1, 'seenAmount': 1, 'playersInRound': listOfUsers,'seenPlayersInRound':[],'hasWinner':false,'gameEnded':false, 'consultInProgress':false } }, { upsert: true, returnOriginal: false, useFindAndModify: false, new: true },
+    await gameStatusSchema.findOneAndUpdate({ 'gameId': 'Uno3Hand' }, { '$set': { 'playersRemaining': listOfUsers.length, 'pot': 0.00, 'blindAmount': 1, 'seenAmount': 1, 'playersInRound': listOfUsers,'seenPlayersInRound':[],'hasWinner':false,'gameEnded':false, 'consultInProgress':false, 'ListOfPlayers':ListOfUsers } }, { upsert: true, returnOriginal: false, useFindAndModify: false, new: true },
         function (error, raw) {
             if (error) {
                 return error;
@@ -147,7 +149,8 @@ exports.shuffleCards = async ([listOfUsers, pusher]) => {
                 hasWinner: false, 
                 gameEnded: false,
                 seenPlayersInRound: raw.seenPlayersInRound,
-                consultInProgress:false
+                consultInProgress:false,
+                ListOfPlayers: ListOfUsers
             }
             //console.log(sampleObj)
 
@@ -202,7 +205,7 @@ exports.changeTurn = async ([moveDetails, pusher]) => {
     let amount = moveDetails.amount;
     let userAmount = moveDetails.userAmount;
     let updatedAmount = userAmount - amount;
-    let results = await playerListSchema.find(
+    let results = await listOfUsersSchema.find(
         {},
         function (err, raw) {
             if (err) {
@@ -211,13 +214,13 @@ exports.changeTurn = async ([moveDetails, pusher]) => {
         }
     );
     let index = 0;
-    for (let i = 0; i < results[0].list.length; i++) {
-        if (results[0].list[i] === username) {
+    for (let i = 0; i < results[0].users.length; i++) {
+        if (results[0].users[i] === username) {
             index = i;
         }
     }
     if (hasFolded === true) {
-        results[0].list.splice(index, 1);
+        results[0].users.splice(index, 1);
         //Remove User from Game Status List
         await playerListSchema.findOneAndUpdate({ 'name': 'PlayerList' }, { '$set': { 'list': results[0].list } }, { returnOriginal: false, useFindAndModify: false, new: true },
             function (error, properties) {
